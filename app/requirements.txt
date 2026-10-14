@@ -1,4 +1,6 @@
-streamlit
-snowflake-connector-python
-pandas
-
+﻿# Dependencies of the Streamlit app (versions the app was developed and tested with).
+# snowflake-connector-python is only used when Snowflake credentials are configured
+# (local development); the public deployment reads app/snapshot/ instead.
+streamlit==1.65.0
+pandas==3.0.6
+snowflake-connector-python==4.8.0
