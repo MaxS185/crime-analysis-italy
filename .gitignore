@@ -1,0 +1,30 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# dbt
+target/
+dbt_packages/
+logs/
+*.log
+
+# Temporary debug output
+dbt_debug_output.txt
+
+# IDE
+.idea/
+
+# Credentials (profiles.yml lives outside the repo, in ~/.dbt/; never here)
+profiles.yml
+*.env
+.env
+
+# Streamlit secrets (warehouse credentials; never in the repo)
+.streamlit/secrets.toml

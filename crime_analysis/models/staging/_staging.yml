@@ -1,0 +1,84 @@
+version: 2
+
+models:
+  - name: stg_crimes
+    description: >
+      Staging view of ISTAT crime denunciations. Renames columns to English,
+      keeps only the analysis period (2019-2024) and derives the territorial
+      level. The TOT aggregate and the residual territorial codes are kept
+      and flagged, not dropped. Grain: one row per area, crime type and year.
+    columns:
+      - name: area_code
+        description: ISTAT territorial code.
+        data_tests:
+          - not_null
+      - name: area_name
+        description: Territory name in Italian.
+        data_tests:
+          - not_null
+      - name: crime_type_code
+        description: ISTAT crime type code (includes the TOT aggregate).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('type_crime_classification')
+                field: crime_code
+      - name: crime_type_name
+        description: Crime type name in Italian.
+        data_tests:
+          - not_null
+      - name: year
+        description: Reference year within the analysis period.
+        data_tests:
+          - not_null
+      - name: crime_count
+        description: Number of reported crimes.
+        data_tests:
+          - not_null
+      - name: territorial_level
+        description: Level derived from the area code pattern. 'unknown' is not an accepted value.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['municipality', 'province', 'region', 'macro_area', 'country']
+      - name: is_residual_area
+        description: True for the 7 non-standard territorial codes.
+        data_tests:
+          - not_null
+
+  - name: stg_population
+    description: >
+      Staging view of ISTAT resident population. Renames columns to English,
+      keeps only the analysis period (2019-2024) and derives the territorial
+      level. Also contains residual codes absent from the crime data
+      (IT111, ITCD, ITFG), flagged as residual. Grain: one row per area and year.
+    columns:
+      - name: area_code
+        description: ISTAT territorial code.
+        data_tests:
+          - not_null
+      - name: area_name
+        description: Territory name in Italian.
+        data_tests:
+          - not_null
+      - name: year
+        description: Reference year within the analysis period.
+        data_tests:
+          - not_null
+      - name: population
+        description: Resident population.
+        data_tests:
+          - not_null
+      - name: territorial_level
+        description: Level derived from the area code pattern. 'unknown' is not an accepted value.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['municipality', 'province', 'region', 'macro_area', 'country']
+      - name: is_residual_area
+        description: True for non-standard territorial codes.
+        data_tests:
+          - not_null

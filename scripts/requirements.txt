@@ -1,0 +1,4 @@
+# Dependencies for the ingestion and loading scripts (scripts/).
+# Versions are the ones the project was developed and tested with.
+pandas==3.0.6
+snowflake-connector-python==4.8.0

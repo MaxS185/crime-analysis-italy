@@ -1,0 +1,49 @@
+version: 2
+
+sources:
+  - name: raw_crime_data
+    description: >
+      Raw ISTAT data, loaded as-is from the ingestion-only Python scripts
+      (no filtering, no derived columns, no discarded territorial codes).
+      All business logic is applied downstream in dbt.
+    # The database comes from the active dbt profile, so pointing the project
+    # at another database means changing the profile, not this file.
+    database: "{{ target.database }}"
+    # The raw schema defaults to RAW_CRIME_DATA; set the RAW_SCHEMA
+    # environment variable to use a different one.
+    schema: "{{ env_var('RAW_SCHEMA', 'RAW_CRIME_DATA') }}"
+
+    tables:
+      - name: delitti_raw
+        description: >
+          ISTAT crime denunciations, years 2015-2024, all territorial levels
+          and all 56 crime type codes. Column names are the technical names
+          assigned at ingestion (Italian/English mix); they are renamed to
+          English in the staging layer.
+        columns:
+          - name: ref_area
+            description: ISTAT territorial code (municipality, province, region, macro-area or country).
+          - name: territorio
+            description: Territory name, in Italian.
+          - name: type_crime
+            description: ISTAT crime type code (56 distinct values, including the TOT aggregate).
+          - name: tipo_di_delitto
+            description: Crime type name, in Italian.
+          - name: anno
+            description: Reference year.
+          - name: numero_delitti
+            description: Number of reported crimes.
+
+      - name: popolazione_raw
+        description: >
+          ISTAT resident population by territory and year (2019-2026).
+          Covers all ~7,900 municipalities plus the higher territorial levels.
+        columns:
+          - name: ref_area
+            description: ISTAT territorial code, same coding scheme as delitti_raw.
+          - name: territorio
+            description: Territory name, in Italian.
+          - name: anno
+            description: Reference year.
+          - name: popolazione
+            description: Resident population.

@@ -1,0 +1,57 @@
+crime_code,crime_name_en
+ARSON,Arson
+ARTTHEF,Thefts of works of art and archaeological material
+ATTACK,Terrorist or subversive attacks
+ATTEMPHOM,Attempted murders
+BAGTHEF,Bag snatching
+BANKROB,Bank robberies
+BLOWS,Battery
+BURGTHEF,Burglaries in homes
+CARTHEF,Car thefts
+CORRUPUN18,Corruption of a minor
+COUNTER,Counterfeiting of trademarks and industrial products
+CRIMASS,Criminal association
+CULPINJU,Intentional bodily injuries
+CYBERCRIM,Cybercrimes
+DAMAGE,Property damage
+DAMARS,Property damage followed by arson
+DRUG,Drug law offences
+EXTORT,Extortion
+FOREARS,Forest fires
+HOUSEROB,Robberies in homes
+INFANTHOM,Infanticides
+INTENHOM,Completed intentional homicides
+INTPROP,Intellectual property violations
+KIDNAPP,Kidnapping
+MAFIAHOM,Completed intentional homicides of a mafia type
+MAFIASS,Mafia-type association
+MANSHOM,Manslaughter (preterintentional homicides)
+MASSMURD,Massacre
+MENACE,Threats
+MONEYLAU,"Money laundering and use of money, goods or assets of illicit origin"
+MOPETHEF,Moped thefts
+MOTORTHEF,Motorcycle thefts
+OFFENCE,OFFENCE
+OTHCRIM,Other crimes
+PICKTHEF,Pickpocketing
+PORNO,Child pornography and possession of child sexual abuse material
+POSTROB,Post office robberies
+PROSTI,Exploitation and aiding of prostitution
+RAPE,Sexual violence
+RAPEUN18,Sexual acts with a minor
+RECEIV,Receiving stolen goods
+ROADHOM,Negligent homicides from road accidents
+ROBBER,Robberies
+ROBBHOM,Completed intentional homicides for theft or robbery
+SHOPROB,Robberies in shops
+SHOPTHEF,Shoplifting
+SMUGGL,Smuggling
+STREETROB,Street robberies
+SWINCYB,Computer fraud and scams
+TERRORHOM,Completed intentional homicides for terrorist purposes
+THEFT,Thefts
+TOT,Total
+TRUCKTHEF,Thefts of heavy goods vehicles
+UNINTHOM,Negligent homicides
+USURY,Usury
+VEHITHEF,Thefts from parked vehicles

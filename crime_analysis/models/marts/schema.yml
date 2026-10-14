@@ -1,0 +1,166 @@
+version: 2
+
+models:
+  - name: dim_crimes
+    description: >
+      Crime type dimension: one row per ISTAT crime type code (56 codes),
+      combining the classification seed with the crime name from the staging data.
+      OFFENCE has no data in the 2019-2024 period, so its name falls back to its code.
+    columns:
+      - name: crime_code
+        description: ISTAT crime type code (primary key).
+        data_tests:
+          - unique
+          - not_null
+      - name: crime_name
+        description: Crime type name in Italian, as published by ISTAT.
+        data_tests:
+          - not_null
+      - name: crime_name_en
+        description: >
+          Crime type name in English, from the crime_names_en seed (manual
+          translation). The Italian original stays in crime_name.
+        data_tests:
+          - not_null
+      - name: hierarchy_level
+        description: >
+          Position in the crime hierarchy. A child code overlaps with its parent,
+          and TOT is a row-level aggregate: filter hierarchy_level NOT IN
+          ('child', 'total') before summing across crime types.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['parent', 'child', 'standalone', 'total']
+      - name: parent_crime_code
+        description: Parent crime code for child codes, null otherwise.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_crimes')
+                field: crime_code
+      - name: is_severe_crime
+        description: True for the 22 crime codes classified as severe.
+        data_tests:
+          - not_null
+
+  - name: dim_areas
+    description: >
+      Territorial area dimension: one row per ISTAT area code present in the
+      crime data (242 codes). Municipality level covers the 108 provincial
+      capitals only. Residual areas are kept and flagged.
+    columns:
+      - name: area_code
+        description: ISTAT territorial code (primary key).
+        data_tests:
+          - unique
+          - not_null
+      - name: area_name
+        description: Territory name in Italian.
+        data_tests:
+          - not_null
+      - name: territorial_level
+        description: Level derived from the area code pattern.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['municipality', 'province', 'region', 'macro_area', 'country']
+      - name: is_residual_area
+        description: >
+          True for the 7 non-standard codes (6 provinces and the ITDA regional
+          aggregate). Exclude ITDA where it would double count.
+        data_tests:
+          - not_null
+      - name: macro_area_code
+        description: >
+          Macro area code (ITC, ITD, ITE, ITF, ITG). Set for municipality and
+          macro_area levels, null for the other levels.
+        data_tests:
+          - not_null:
+              config:
+                where: "territorial_level IN ('municipality', 'macro_area')"
+          - relationships:
+              arguments:
+                to: ref('dim_areas')
+                field: area_code
+              config:
+                where: "macro_area_code IS NOT NULL"
+
+  - name: fct_crimes
+    description: >
+      Crime fact table. Grain: one row per area, year and crime type code.
+      Keeps every row of the staging data; filter through dim_crimes and
+      dim_areas to avoid double counting.
+    columns:
+      - name: area_code
+        description: Foreign key to dim_areas.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_areas')
+                field: area_code
+      - name: crime_code
+        description: Foreign key to dim_crimes.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_crimes')
+                field: crime_code
+      - name: year
+        description: Reference year (2019-2024).
+        data_tests:
+          - not_null
+      - name: crime_count
+        description: Number of reported crimes.
+        data_tests:
+          - not_null
+      - name: population
+        description: Resident population of the area in that year.
+        data_tests:
+          - not_null
+      - name: crime_rate_per_100k
+        description: >
+          Reported crimes per 100,000 inhabitants. Valid only at row level:
+          when aggregating areas or crime types, sum crime_count and population
+          first, then recompute the rate. Never average the rates.
+        data_tests:
+          - not_null
+
+seeds:
+  - name: municipality_macro_area
+    description: >
+      Maps each of the 108 provincial capitals (municipality level) to its
+      macro area code.
+    columns:
+      - name: area_code
+        description: ISTAT municipality code (6 digits, leading zeros kept).
+        data_tests:
+          - unique
+          - not_null
+      - name: macro_area_code
+        description: Macro area code (ITC, ITD, ITE, ITF, ITG).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['ITC', 'ITD', 'ITE', 'ITF', 'ITG']
+
+  - name: crime_names_en
+    description: English names for the 56 ISTAT crime type codes (manual translation).
+    columns:
+      - name: crime_code
+        description: ISTAT crime type code.
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('type_crime_classification')
+                field: crime_code
+      - name: crime_name_en
+        description: Crime type name in English.
+        data_tests:
+          - not_null
