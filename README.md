@@ -2,7 +2,7 @@
 
 An interactive dashboard on Italian crime statistics, built from ISTAT open data with **Snowflake**, **dbt** and **Streamlit**. It compares territories on crimes per 100,000 inhabitants, separates severe from non-severe crimes, and documents every data decision along the way.
 
-**Live app**: _link to be added after deployment_
+**Live app**: https://crime-analysis-italy.streamlit.app
 
 ![Dashboard overview](docs/images/dashboard-overview.png)
 
@@ -45,6 +45,7 @@ More detail in [`PROJECT_DOCUMENTATION.md`](PROJECT_DOCUMENTATION.md) and [`IMPL
 No connection detail is written in the code. To point the project at another Snowflake account or database, change the values in `.streamlit/secrets.toml` (app) and in your dbt profile (dbt), set `SNOWFLAKE_PASSWORD`, reload the raw tables, run `dbt seed && dbt run && dbt test` and re-export the app snapshot with `scripts/04_export_app_snapshot.py`. The database and raw schema read by dbt come from the profile and the optional `RAW_SCHEMA` variable. Warehouse-specific SQL lives in dbt macros, so a different warehouse also needs only another dbt adapter and a new connection function in the app.
 
 ## Data sources and credits
-- Crime and population data: [ISTAT](https://www.istat.it), licensed CC BY 4.0.
+- Crime and population data: [ISTAT](https://www.istat.it), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The raw files in `data/` are ISTAT downloads. The cleaned files in `data/` and the files in `app/snapshot/` are derived from them: the cleaning, classification and aggregation are this project's own work, not official ISTAT figures. ISTAT is not affiliated with this project and does not endorse it.
+- **Licensing**: the MIT License covers the code in this repository only. The ISTAT data and the data derived from it keep their own licence (CC BY 4.0), which requires attribution and an indication of changes.
 - Boundaries: ISTAT, via [openpolis/geojson-italy](https://github.com/openpolis/geojson-italy), CC BY 4.0.
 - Background: Michelangelo, _The Creation of Adam_ (public domain, via Wikimedia Commons).

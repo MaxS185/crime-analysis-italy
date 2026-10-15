@@ -1,11 +1,11 @@
 crime_code,crime_name_en
-ARSON,Arson
+ARSON,Fires
 ARTTHEF,Thefts of works of art and archaeological material
-ATTACK,Terrorist or subversive attacks
+ATTACK,Attacks
 ATTEMPHOM,Attempted murders
-BAGTHEF,Bag snatching
+BAGTHEF,Snatch thefts
 BANKROB,Bank robberies
-BLOWS,Battery
+BLOWS,Battery (blows)
 BURGTHEF,Burglaries in homes
 CARTHEF,Car thefts
 CORRUPUN18,Corruption of a minor
@@ -23,7 +23,7 @@ INFANTHOM,Infanticides
 INTENHOM,Completed intentional homicides
 INTPROP,Intellectual property violations
 KIDNAPP,Kidnapping
-MAFIAHOM,Completed intentional homicides of a mafia type
+MAFIAHOM,Completed mafia-type intentional homicides
 MAFIASS,Mafia-type association
 MANSHOM,Manslaughter (preterintentional homicides)
 MASSMURD,Massacre
@@ -31,7 +31,7 @@ MENACE,Threats
 MONEYLAU,"Money laundering and use of money, goods or assets of illicit origin"
 MOPETHEF,Moped thefts
 MOTORTHEF,Motorcycle thefts
-OFFENCE,OFFENCE
+OFFENCE,Insults
 OTHCRIM,Other crimes
 PICKTHEF,Pickpocketing
 PORNO,Child pornography and possession of child sexual abuse material
@@ -44,7 +44,7 @@ ROADHOM,Negligent homicides from road accidents
 ROBBER,Robberies
 ROBBHOM,Completed intentional homicides for theft or robbery
 SHOPROB,Robberies in shops
-SHOPTHEF,Shoplifting
+SHOPTHEF,Thefts in shops
 SMUGGL,Smuggling
 STREETROB,Street robberies
 SWINCYB,Computer fraud and scams
