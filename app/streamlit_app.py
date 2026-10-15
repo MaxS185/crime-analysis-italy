@@ -713,6 +713,13 @@ city_table = (
     .round(1)
 )
 
+def keep_view() -> None:
+    """Keep exactly one map view selected: clicking the active option restores it."""
+    if st.session_state.get("map_view") is None:
+        st.session_state["map_view"] = st.session_state.get("map_view_last", "Map")
+    st.session_state["map_view_last"] = st.session_state["map_view"]
+
+
 with st.container(key="row_main"):
     left_col, right_col = st.columns([5, 7])
     with left_col:
@@ -778,7 +785,7 @@ with st.container(key="row_main"):
             with switch_col:
                 view = st.segmented_control(
                     "View", ["Map", "All cities"], default="Map", label_visibility="collapsed",
-                    key="map_view",
+                    key="map_view", on_change=keep_view,
                 )
             with title_col:
                 if view == "All cities":
