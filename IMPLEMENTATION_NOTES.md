@@ -19,6 +19,9 @@ Python scripts do ingestion only: CSV parsing, technical renaming and loading in
 ### Non-standard ISTAT CSV quoting
 The export from esploradati.istat.it uses `'` as quotechar and `"` as escape (e.g. "L'Aquila" becomes `'L"'Aquila'`). `pandas.read_csv` parses it with `quotechar="'"`, `escapechar='"'`, `doublequote=False`, `engine="python"`. To get the crime-type breakdown, "Tipo di delitto" must be set as a dimension in the TABLE view before exporting, otherwise only the `TOT` aggregate is returned.
 
+### Literal "None" in the data
+One Italian municipality (code `001168`) is literally named "None". By default pandas reads the text `None` (like `NA` or `null`) as a missing value, so the municipality lost its name. The ingestion scripts therefore read the CSVs with `keep_default_na=False` and `na_values=[""]`, so that only empty fields are treated as missing, and with `dtype={"REF_AREA": str}` to keep leading zeros in area codes. The raw population table was reloaded after the fix.
+
 ### Territorial levels
 All levels are kept (municipality, province, region, macro-area, country). The municipality level in the crime dataset covers only the **108 provincial capitals**, not all ~7,900 Italian municipalities. In the app and the docs this level is called "cities" and the limitation is stated in labels and footnotes.
 
@@ -54,7 +57,7 @@ All levels are kept (municipality, province, region, macro-area, country). The m
 ## Data Warehouse Setup
 
 ### Snowflake
-- An XSMALL warehouse with a short auto-suspend, the database `CRIME_ANALYSIS` with schemas `RAW_CRIME_DATA` and `ANALYTICS`, and a dedicated role and user for dbt (`scripts/setup_snowflake.sql` creates these objects, with placeholders for the names). Never reuse a personal or administrator login for automated connections.
+- An XSMALL warehouse with a short auto-suspend, the database `CRIME_ANALYSIS` with schemas `RAW_CRIME_DATA` and `ANALYTICS`, and a dedicated role and user for dbt (`scripts/setup_snowflake.sql` creates these objects; its only placeholder is the password of the dbt user, to be filled in the Snowsight worksheet and never saved or committed). Never reuse a personal or administrator login for automated connections.
 - Raw tables: `RAW_CRIME_DATA.DELITTI_RAW` (133,826 rows) and `POPOLAZIONE_RAW` (64,369 rows), loaded from the cleaned CSVs by `scripts/03_load_to_snowflake.py`. `ref_area` is VARCHAR in both, preserving leading zeros.
   - `DELITTI_RAW`: `REF_AREA`, `TERRITORIO`, `TYPE_CRIME`, `TIPO_DI_DELITTO` (VARCHAR); `ANNO`, `NUMERO_DELITTI` (NUMBER).
   - `POPOLAZIONE_RAW`: `REF_AREA`, `TERRITORIO` (VARCHAR); `ANNO`, `POPOLAZIONE` (NUMBER).

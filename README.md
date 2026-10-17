@@ -36,7 +36,7 @@ More detail in [`PROJECT_DOCUMENTATION.md`](PROJECT_DOCUMENTATION.md) and [`IMPL
 ## Run it yourself
 1. Create a Python 3.13 virtual environment and install `scripts/requirements.txt` and `app/requirements.txt`.
 2. The ISTAT downloads and the cleaned CSVs are already in `data/` (see `data/README.md`). To regenerate the cleaned files, run `scripts/01_clean_delitti.py` and `scripts/02_clean_popolazione.py`.
-3. Prepare the Snowflake objects (warehouse, database, schemas, role and user) with `scripts/setup_snowflake.sql`, replacing the placeholders with your own values.
+3. Create the Snowflake objects (warehouse, database, schemas, role and user) by running `scripts/setup_snowflake.sql` in a Snowsight worksheet as an administrator. Fill in the password placeholder in the worksheet only; never save or commit a filled-in copy.
 4. Copy `.env.example` to `.env`, fill in your Snowflake details, and run `python scripts/03_load_to_snowflake.py`. It uploads the two cleaned CSVs to a temporary stage, loads them into the raw tables with `COPY INTO` and checks that the row counts match the files. It can be re-run at any time.
 5. Configure your dbt profile (password from the `SNOWFLAKE_PASSWORD` environment variable) and `.streamlit/secrets.toml` with your own Snowflake details.
 6. From `crime_analysis/`: `dbt seed && dbt run && dbt test`.

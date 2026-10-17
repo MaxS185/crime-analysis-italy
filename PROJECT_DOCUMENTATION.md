@@ -92,7 +92,7 @@ crime-analysis-italy/
 1. Clone the repository and create a Python 3.13 virtual environment.
 2. Install dependencies from `scripts/requirements.txt` and `app/requirements.txt`.
 3. The ISTAT downloads and the cleaned CSVs are already in `data/`; to regenerate the cleaned files, run the two ingestion scripts.
-4. Prepare the Snowflake objects with `scripts/setup_snowflake.sql` (replace the placeholders with your own values), copy `.env.example` to `.env`, fill it in and run `python scripts/03_load_to_snowflake.py`. It loads the two cleaned CSVs into the raw tables through a temporary stage and checks the row counts.
+4. Create the Snowflake objects by running `scripts/setup_snowflake.sql` in a Snowsight worksheet (fill in the password placeholder there only, never in a saved copy), copy `.env.example` to `.env`, fill it in and run `python scripts/03_load_to_snowflake.py`. It loads the two cleaned CSVs into the raw tables through a temporary stage and checks the row counts.
 5. Configure the dbt profile and the Streamlit secrets from the provided templates.
 6. From `crime_analysis/`: `dbt seed && dbt run && dbt test`.
 7. From the repository root: `streamlit run app/streamlit_app.py` (with Snowflake credentials it queries Snowflake; without them it reads `app/snapshot/`).
