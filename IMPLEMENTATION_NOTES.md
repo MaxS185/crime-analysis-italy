@@ -1,14 +1,5 @@
 # Implementation Notes — Technical Reference
 
-## Current Project Status
-
-- **Environment, ingestion, warehouse setup**: complete.
-- **dbt project**: complete. Staging, marts, seeds, macros and tests are built; the last full run passed all 54 tests.
-- **Streamlit app** (`app/streamlit_app.py`): complete and approved.
-- **Open**: repository cleanup and documentation, reproducible loading pipeline, GitHub, Streamlit Cloud deploy, LinkedIn post.
-
----
-
 ## Language Convention
 
 - Code, technical documentation, dbt objects (macros, seeds, models, column names, enum values) and app texts are in **English**.
@@ -23,13 +14,13 @@
 The ISTAT municipal population dataset only starts in 2019 (post-Census population bases), so the whole project is aligned to 2019 instead of mixing sources and methodologies. The period is controlled by the dbt vars `analysis_start_year` and `analysis_end_year` (defaults 2019 and 2024).
 
 ### ELT, not ETL
-Python scripts do ingestion only: CSV parsing and technical renaming, no year filter, no derived columns, no discarding of any `REF_AREA` value (including the 7 residual codes `IT108`, `IT109`, `IT110`, `ITC4A`, `ITC4B`, `ITDA`, `ITE1A`). All business logic (severity flag, territorial level, crime-code hierarchy, macro-area mapping, English crime names) lives in dbt, so it is tested and documented.
+Python scripts do ingestion only: CSV parsing, technical renaming and loading into the raw tables, with no year filter, no derived columns, no discarding of any `REF_AREA` value (including the 7 residual codes `IT108`, `IT109`, `IT110`, `ITC4A`, `ITC4B`, `ITDA`, `ITE1A`). All business logic (severity flag, territorial level, crime-code hierarchy, macro-area mapping, English crime names) lives in dbt, so it is tested and documented.
 
 ### Non-standard ISTAT CSV quoting
 The export from esploradati.istat.it uses `'` as quotechar and `"` as escape (e.g. "L'Aquila" becomes `'L"'Aquila'`). `pandas.read_csv` parses it with `quotechar="'"`, `escapechar='"'`, `doublequote=False`, `engine="python"`. To get the crime-type breakdown, "Tipo di delitto" must be set as a dimension in the TABLE view before exporting, otherwise only the `TOT` aggregate is returned.
 
 ### Territorial levels
-All levels are kept (municipality, province, region, macro-area, country). The municipality level in the crime dataset covers only the **108 provincial capitals**, not all ~7,900 Italian municipalities. In the app and the docs this level is called "cities" and the limitation is stated in a footnote.
+All levels are kept (municipality, province, region, macro-area, country). The municipality level in the crime dataset covers only the **108 provincial capitals**, not all ~7,900 Italian municipalities. In the app and the docs this level is called "cities" and the limitation is stated in labels and footnotes.
 
 ### TYPE_CRIME classification (56 codes), a dbt seed
 - Parent/child hierarchy verified on the ISTAT selection tree and numerically:
@@ -43,6 +34,7 @@ All levels are kept (municipality, province, region, macro-area, country). The m
 - `TOT` is a row-level aggregate across all crime types, not a crime type: `hierarchy_level = 'total'`, `is_severe_crime = false`, never summed with individual codes.
 - No separate mafia/terrorism flags: the dataset has only dedicated codes (MAFIAHOM/MAFIASS, TERRORHOM/ATTACK).
 - `OFFENCE` was discontinued from 2018 (absent at every level), so it falls outside the analysis window. The period has 55 codes with data; the seed keeps all 56.
+- English names (`crime_names_en` seed) were checked against the Italian ISTAT names.
 
 ---
 
@@ -62,12 +54,14 @@ All levels are kept (municipality, province, region, macro-area, country). The m
 ## Data Warehouse Setup
 
 ### Snowflake
-- Warehouse `COMPUTE_WH` (XSMALL, auto-suspend 60s), database `CRIME_ANALYSIS` with schemas `RAW_CRIME_DATA` and `ANALYTICS`, role `DBT_ROLE`, dedicated user `DBT_USER`. Never reuse a personal or `ACCOUNTADMIN` login for automated connections.
-- Raw tables were loaded manually via Snowsight: `RAW_CRIME_DATA.DELITTI_RAW` (133,826 rows) and `POPOLAZIONE_RAW` (64,369 rows). `ref_area` is VARCHAR in both, preserving leading zeros.
+- An XSMALL warehouse with a short auto-suspend, the database `CRIME_ANALYSIS` with schemas `RAW_CRIME_DATA` and `ANALYTICS`, and a dedicated role and user for dbt (`scripts/setup_snowflake.sql` creates these objects, with placeholders for the names). Never reuse a personal or administrator login for automated connections.
+- Raw tables: `RAW_CRIME_DATA.DELITTI_RAW` (133,826 rows) and `POPOLAZIONE_RAW` (64,369 rows), loaded from the cleaned CSVs by `scripts/03_load_to_snowflake.py`. `ref_area` is VARCHAR in both, preserving leading zeros.
   - `DELITTI_RAW`: `REF_AREA`, `TERRITORIO`, `TYPE_CRIME`, `TIPO_DI_DELITTO` (VARCHAR); `ANNO`, `NUMERO_DELITTI` (NUMBER).
   - `POPOLAZIONE_RAW`: `REF_AREA`, `TERRITORIO` (VARCHAR); `ANNO`, `POPOLAZIONE` (NUMBER).
-- `DBT_ROLE` has USAGE on the schema and SELECT on all current and future tables. Objects created by dbt are owned by `DBT_ROLE`; to query them from Snowsight as `ACCOUNTADMIN`, run `GRANT ROLE DBT_ROLE TO ROLE ACCOUNTADMIN`.
-- Account identifier format: if the organization-account format does not resolve (DNS on a newly created account can lag), use the legacy locator format `<locator>.<region>.<cloud>` in the dbt profile. Either works once resolvable.
+- The dbt role has USAGE on the schema and SELECT on all current and future tables. Objects created by dbt are owned by that role.
+
+### Loading script (`scripts/03_load_to_snowflake.py`)
+Ingestion only. It validates the two cleaned CSVs (existence and column names), uploads each to a temporary stage, creates the raw table with `CREATE OR REPLACE` and fills it with `COPY INTO` (`ON_ERROR = ABORT_STATEMENT`), then checks that the table row count equals the CSV row count. Because tables are replaced, it can be re-run for a data update. It does not depend on pyarrow.
 
 ### Credentials and configuration: nothing in the code
 No account, user, password or warehouse name is written in code or in versioned files. Each consumer reads them from outside the repo:
@@ -77,15 +71,13 @@ No account, user, password or warehouse name is written in code or in versioned 
 | Streamlit, local | `.streamlit/secrets.toml` (`[snowflake]` section) | No (gitignored) |
 | Streamlit Cloud | none: no Snowflake secrets are set, so the app reads `app/snapshot/` | n/a |
 | dbt | `~/.dbt/profiles.yml`, password from the `SNOWFLAKE_PASSWORD` environment variable | No |
-| Loading scripts (planned) | environment variables | No |
+| Loading script | environment variables or a local `.env` file | No (gitignored) |
 
-Migrating to another database or account means changing these values, not the code. The app has a single connection point (`run_query`, cached for 1 hour); the dbt dialect differences are isolated in `macros/cross_db_helpers.sql`. Template files with fake values (`secrets.toml.example`, `.env.example`) document what is required.
+Migrating to another database or account means changing these values, not the code. The app has a single connection point (`run_query`, cached for 1 hour); the dbt dialect differences are isolated in `macros/cross_db_helpers.sql`. Template files with fake values (`secrets.toml.example`, `.env.example`) document what is required. The raw schema name is configurable through the optional `RAW_SCHEMA` variable, read by both dbt and the loading script.
 
 ### Operational notes
 - All dbt commands run from inside `crime_analysis/`, not from the project root.
-- `SNOWFLAKE_PASSWORD` must be set in every new terminal session (not persisted). Set it without leaving the value in history: `$env:SNOWFLAKE_PASSWORD = [System.Net.NetworkCredential]::new('', (Read-Host -AsSecureString 'Snowflake password')).Password`.
-- On Windows the Snowflake connector prints an Apache Arrow DLL warning (application control). It is harmless.
-- The system Python has pandas/pyarrow blocked by Application Control, so the app is launched with the project virtual environment.
+- `SNOWFLAKE_PASSWORD` is read from the environment and is never stored in the repository.
 
 ### Portability
 Dialect differences (regular expressions) are isolated in `macros/cross_db_helpers.sql`, which dispatches on `target.type`. The SQL models stay dialect-agnostic, so the project can move to another warehouse by changing the dbt adapter and profile.
@@ -150,15 +142,21 @@ Dialect differences (regular expressions) are isolated in `macros/cross_db_helpe
 
 - Dark glass theme, background fresco under a dark veil, Plus Jakarta Sans font, pastel palette, max width 1,800 px. All CSS is in one block (fragile across Streamlit versions).
 - **Filters**: macro-area buttons, severity and city selector (popover with search), years. Empty city list means all cities. Selecting cities locks the macro-area buttons to those cities' macro-areas; clearing the list restores the previous selection.
-- **Totals row**: total crimes, crimes per 100,000 inhabitants, change first to last year, number of cities.
-- **Central row**: Top 10 crime types and severe vs non-severe index (first year = 100); a map of the five macro-areas (circle area proportional to total crimes) or a sortable table of the 108 cities with CSV export.
+- **Totals row** (provincial capitals only, labelled as such): total crimes, crimes per 100,000 inhabitants, change first to last year, number of cities.
+- **Central row**: Top 10 crime types and severe vs non-severe index (first year = 100); a map of the five macro-areas (circle area proportional to total crimes) or a sortable table of the 108 cities with CSV export. The map title notes that it covers all municipalities, not only capitals.
 - **Bottom row**: Top 5 cities by total crimes and by crimes per 100,000.
-- The map uses pre-aggregated macro-area rows, follows years and severity but not the city selection.
+- The map uses pre-aggregated macro-area rows, follows years and severity but not the city selection. Its totals cover whole macro-areas, so they are higher than the sum of the capitals; footnotes explain this.
 - Data comes from three queries (`CITY_SQL`, `MACRO_SQL`, `CRIME_SQL`, in `app/queries.py`) through `run_query(name)`, cached 1 hour. With Snowflake credentials in `st.secrets["snowflake"]` the queries run live; without them (public deployment) the result is read from `app/snapshot/<name>.csv`. The environment variable `CRIME_APP_DATA=snapshot` forces the files locally.
 - `scripts/04_export_app_snapshot.py` runs the same three queries on Snowflake and writes `app/snapshot/city.csv` (1,296 rows), `macro.csv` (60) and `crime.csv` (21,384 = 108 cities x 6 years x 33 crime codes). It reads the credentials from `.streamlit/secrets.toml` and writes all files only after every query succeeded. Re-run it and commit the files after every data update.
 - Assets: `app/assets/background.png` (name must stay `background.<ext>`) and `app/assets/macro_areas.geojson` (macro-areas dissolved from region polygons, ISTAT CC BY 4.0). `.streamlit/config.toml` is committed; `secrets.toml` never.
-- Launch from the project root: `.\.venv\Scripts\python.exe -m streamlit run app/streamlit_app.py`.
+- Launch from the project root: `streamlit run app/streamlit_app.py`.
 - Charts use Altair (bundled with Streamlit).
+
+---
+
+## Deployment
+
+The public repository is connected to Streamlit Cloud (main file `app/streamlit_app.py`). No Snowflake secrets are configured there, so the app reads the CSV files in `app/snapshot/`. Every push to `main` redeploys the app. The public app is at https://crime-analysis-italy.streamlit.app.
 
 ---
 
@@ -177,21 +175,10 @@ crime-analysis-italy/
 
 Data files (`data/`, versioned): `delitti_raw.csv`, `popolazione_raw.csv` (ISTAT downloads) and `delitti_cleaned.csv`, `popolazione_cleaned.csv` (script outputs; these are the exact data loaded into the Snowflake raw tables, 133,826 and 64,369 rows).
 
----
-
-## Next Steps (in order)
-
-1. Finish repository cleanup and documentation (README with screenshots, architecture, data rules, attributions).
-2. Reproducible pipeline: `scripts/03_load_to_snowflake.py` (loads the two cleaned CSVs), parametric `_sources.yml`, `scripts/setup_snowflake.sql` with placeholders, `scripts/requirements.txt`. Scripts created; the end-to-end run on a clean Snowflake account is still to be confirmed before the docs describe it as done.
-3. Public app data (done): `app/snapshot/` holds the results of the three queries, exported with `scripts/04_export_app_snapshot.py`; production reads them, development keeps querying Snowflake.
-4. GitHub: public repository, first commit and push.
-5. Streamlit Cloud deploy (do not add Snowflake secrets: the app then reads `app/snapshot/`), then the LinkedIn post.
-6. Optional: `not_null` tests on sources; investigate the 441 missing municipality-years; small graphic fixes.
-
 ## Dependencies
 - Ingestion scripts: pandas, snowflake-connector-python.
 - dbt: dbt-core 1.12.5, dbt-snowflake 1.12.1.
-- App: streamlit 1.65.0, snowflake-connector-python, pandas (`pyarrow<25` only locally).
+- App: streamlit 1.65.0, snowflake-connector-python, pandas.
 
 ## Attributions
 - Crime and population data: ISTAT, CC BY 4.0.

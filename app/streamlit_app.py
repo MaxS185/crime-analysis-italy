@@ -682,7 +682,11 @@ with st.container(key="row_kpi"):
     k1, k2, k3, k4 = st.columns(4)
     with k1:
         with st.container(key="kpi_total"):
-            kpi("Total crimes", f"{total_crimes:,.0f}", f"{len(year_sel)} year(s) selected")
+            kpi(
+                "Total crimes (provincial capitals only)",
+                f"{total_crimes:,.0f}",
+                f"{len(year_sel)} year(s) selected",
+            )
     with k2:
         with st.container(key="kpi_rate"):
             kpi("Crimes per 100,000 inhabitants", f"{overall_rate:,.0f}", "total ÷ population")
@@ -791,7 +795,7 @@ with st.container(key="row_main"):
                 if view == "All cities":
                     card_title("📋", "All cities", f"{len(totals)} provincial capitals, selected years")
                 else:
-                    card_title("🗺️", "Crimes by macro-area", "circle area ∝ total crimes")
+                    card_title("🗺️", "Crimes by macro-area", "all municipalities, not only capitals")
             if view == "All cities":
                 st.dataframe(
                     city_table,

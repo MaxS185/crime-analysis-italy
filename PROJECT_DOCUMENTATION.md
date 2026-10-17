@@ -3,7 +3,7 @@
 ## Overview
 An interactive public dashboard on Italian crime statistics (2019-2024), built from ISTAT data with Snowflake, dbt and Streamlit. It demonstrates a production-style ELT pipeline, from raw ISTAT CSV files to a public web app, using free-tier tools.
 
-**Live dashboard**: [link to be added after deployment to Streamlit Cloud]
+**Live dashboard**: https://crime-analysis-italy.streamlit.app
 
 ## Project Goals
 - Compare crime across Italian territories over six years, normalized per 100,000 inhabitants so areas of different size can be compared fairly.
@@ -14,14 +14,14 @@ An interactive public dashboard on Italian crime statistics (2019-2024), built f
 - **Data warehouse**: Snowflake
 - **Transformations**: dbt Core 1.12.5 with dbt-snowflake 1.12.1
 - **App**: Streamlit 1.65.0 with Altair charts, hosted on Streamlit Cloud
-- **Ingestion**: Python 3.13 and pandas (parsing only, no business logic)
-- **Development**: PyCharm, GitHub (public repository)
+- **Ingestion**: Python 3.13 and pandas (parsing and loading only, no business logic)
+- **Version control**: GitHub (public repository)
 - **Sources**: ISTAT crime denunciations (2019-2024) and ISTAT municipal population, used to compute rates
 
 ## Architecture
 
 ### Data flow (ELT)
-ISTAT CSV files → Python ingestion (parsing only) → Snowflake raw tables → dbt seeds and models (staging, marts) → Streamlit queries → public dashboard.
+ISTAT CSV files → Python ingestion (parsing and loading only) → Snowflake raw tables → dbt seeds and models (staging, marts) → Streamlit queries → public dashboard.
 
 All business logic lives in dbt, not in Python: severity flags, crime-code hierarchy, territorial level derived from the ISTAT area code, macro-area mapping and English crime names.
 
@@ -35,7 +35,7 @@ All business logic lives in dbt, not in Python: severity flags, crime-code hiera
 Warehouse-specific SQL (regular expressions) is isolated in dbt macros, so the models stay dialect-agnostic.
 
 ### Configuration and credentials
-No account, user or password appears in the code. The app reads them from Streamlit secrets and dbt from its local profile and an environment variable; none of these files is versioned. Moving to another database means changing configuration values, not code.
+No account, user or password appears in the code. The app reads them from Streamlit secrets, dbt from its local profile and an environment variable, and the loading script from environment variables or a local `.env` file; none of these files is versioned. Moving to another database means changing configuration values, not code.
 
 ## Dashboard Features
 
@@ -45,14 +45,16 @@ No account, user or password appears in the code. The app reads them from Stream
 - **Years**: 2019-2024.
 
 ### Views
-- Headline figures: total crimes, crimes per 100,000 inhabitants, change from first to last year, number of cities.
+- Headline figures, for the 108 provincial capitals only: total crimes, crimes per 100,000 inhabitants, change from first to last year, number of cities.
 - Top 10 crime types.
 - Severe vs non-severe crimes as an index (first year = 100).
-- Map of the five macro-areas (circle area proportional to total crimes), or a sortable table of the 108 cities with CSV export.
+- Map of the five macro-areas (whole macro-areas, all municipalities; circle area proportional to total crimes), or a sortable table of the 108 cities with CSV export.
 - Top 5 cities by total crimes and by crimes per 100,000 inhabitants.
 
 ### Territorial coverage
-The city level covers only the **108 provincial capitals**, not all ~7,900 Italian municipalities: this is a limit of the ISTAT crime dataset. The app states it in a footnote. Capitals represent about 46% of national crimes over 2019-2024.
+The city level covers only the **108 provincial capitals**, not all ~7,900 Italian municipalities: this is a limit of the ISTAT crime dataset. The app states it in its labels and footnotes. Capitals represent about 46% of national crimes over 2019-2024.
+
+The map is the exception: it uses the macro-area rows aggregated by ISTAT, so it covers the whole territory of each macro-area. Its totals are therefore much higher than the sum of the capitals shown elsewhere, and the app explains this in a footnote.
 
 ## Data Quality and Governance
 
@@ -67,10 +69,8 @@ All 242 area codes were checked against the real data, confirming five levels (c
 ### Tests
 54 dbt tests pass: unique keys, not-null constraints, relationships, seed checks, unique grain on staging and fact models, and tolerance-based reconciliation tests between territorial levels.
 
-## Annual Maintenance
-**When**: January, when ISTAT publishes the previous year.
-**Process**: download the new crime and population CSVs from esploradati.istat.it (with "Tipo di delitto" set as a dimension), run the ingestion scripts, load the raw tables, run `dbt seed && dbt run && dbt test`, export the app snapshot (`scripts/04_export_app_snapshot.py`) and commit it, share the update.
-**Effort**: about one hour per year.
+## Data Updates
+To add a new year: download the new crime and population CSVs from esploradati.istat.it (with "Tipo di delitto" set as a dimension), run the ingestion scripts, load the raw tables with `scripts/03_load_to_snowflake.py`, run `dbt seed && dbt run && dbt test`, export the app snapshot (`scripts/04_export_app_snapshot.py`) and commit it.
 
 ## Deployment
 - **Development**: local virtual environment; dbt and the app connect to Snowflake.
@@ -92,13 +92,10 @@ crime-analysis-italy/
 1. Clone the repository and create a Python 3.13 virtual environment.
 2. Install dependencies from `scripts/requirements.txt` and `app/requirements.txt`.
 3. The ISTAT downloads and the cleaned CSVs are already in `data/`; to regenerate the cleaned files, run the two ingestion scripts.
-4. Load the cleaned CSVs into Snowflake raw tables (an automated loading script is planned).
+4. Prepare the Snowflake objects with `scripts/setup_snowflake.sql` (replace the placeholders with your own values), copy `.env.example` to `.env`, fill it in and run `python scripts/03_load_to_snowflake.py`. It loads the two cleaned CSVs into the raw tables through a temporary stage and checks the row counts.
 5. Configure the dbt profile and the Streamlit secrets from the provided templates.
 6. From `crime_analysis/`: `dbt seed && dbt run && dbt test`.
 7. From the repository root: `streamlit run app/streamlit_app.py` (with Snowflake credentials it queries Snowflake; without them it reads `app/snapshot/`).
-
-## Possible Enhancements
-Province-level map, trend forecasting, additional sources (arrests, convictions), Italian-language interface.
 
 ## Attributions
 - Crime and population data: ISTAT, licensed CC BY 4.0.
